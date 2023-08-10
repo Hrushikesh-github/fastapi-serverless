@@ -1,0 +1,47 @@
+# Define the name of our service
+service: tasks-api
+
+# Define the name of serverless we would use
+# Let's load env variables from a .env file
+frameworkVersion: '3'
+useDotenv: true
+
+# Configure AWS as provider
+# Setting cloudwatch logs to 90 days
+# opt can be read from command line
+# serverless deploy --region us-east-1 --stage production
+provider:
+  name: aws
+  runtime: python3.9
+  region: ${opt:region, 'eu-west-1'}
+  stage: ${opt:stage, 'development'}
+  logRetentionInDays: 90
+  environment:
+    APP_ENVIRONMENT: ${self:provider.stage}
+
+# Defining our Lambda environments
+# by specifying http event, lambda will be invoked via APIGateway
+# Magnum provides proxy btw APIGateway, lambda & Fastapi
+# We set the path to /{proxy+} so that all traffic, regardless of the path, will end up being sent to our Lambda function
+functions:
+  API:
+    handler: main.handle
+    timeout: 10
+    memorySize: 512
+    events:
+      - http:
+          path: /{proxy+}
+          method: any
+          cors:
+            origin: ${env:ALLOWED_ORIGINS}
+            maxAge: 60
+
+custom:
+  pythonRequirements:
+    usePoetry: true
+    noDeploy:
+      - boto3 # already on Lambda
+      - botocore # already on Lambda
+
+plugins:
+  - serverless-python-requirements
